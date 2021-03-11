@@ -1,16 +1,15 @@
 import os
+import json
+import time
+
+import chardet
 
 import requests
 import textract
-import pprint
 
-import json
-import time
 from bs4 import BeautifulSoup
 
-pp = pprint.PrettyPrinter(indent=4)
-
-DELAY_PER_REQUEST = 2 # seconds
+DELAY_PER_REQUEST = 1 # seconds
 
 
 def get_document(document_url, filename, year):
@@ -21,7 +20,8 @@ def get_document(document_url, filename, year):
         for chunk in req.iter_content(chunk_size):
             fd.write(chunk)
 
-    textract.process(f'docs/{year}/{filename}').decode('ascii')
+    document_text = textract.process(f'docs/{year}/{filename}')
+    return document_text.decode(chardet.detect(document_text)['encoding'])
 
 
 def get_decision_documents(base_url, soup, year):
@@ -62,9 +62,11 @@ def get_decision_documents(base_url, soup, year):
 
 def get_ml_data():
     data = {}
-    for year in [x for x in range(1995, 1998)]: # adjust as required
+    for year in [x for x in range(1995, 1996)]: # adjust as required
         if not os.path.exists(f'docs/{year}'):
             os.mkdir(f'docs/{year}') # expected later
+
+        data[str(year)] = []
 
         base_url = f'http://www.saflii.org/za/cases/ZACC/{year}/'
         req = requests.get(base_url)
@@ -72,9 +74,8 @@ def get_ml_data():
 
         links = [link.get('href') for link in soup.find_all('a')]
         court_decision_urls = [base_url + link[8:] for link in links if link.startswith('../') and link.endswith('.html')]
-
-        data[str(year)] = []
-        # time.sleep(DELAY_PER_REQUEST)
+        
+        time.sleep(DELAY_PER_REQUEST)
 
         for decision_url in court_decision_urls:
             req = requests.get(decision_url)
@@ -89,8 +90,8 @@ def get_ml_data():
             })
 
             print(data)
-            # time.sleep(DELAY_PER_REQUEST)
 
+            time.sleep(DELAY_PER_REQUEST)
             break # we just need sample data for now
 
     with open('data.json', 'w') as f:
