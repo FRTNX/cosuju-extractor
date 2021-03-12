@@ -3,13 +3,37 @@ import json
 import time
 
 import chardet
-
 import requests
 import textract
 
 from bs4 import BeautifulSoup
 
+from io import StringIO
+
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFParser
+
+
 DELAY_PER_REQUEST = 1 # seconds
+
+
+# mitigates sentence segmentation
+def get_pdf_text(document_path):
+    output_string = StringIO()
+    with open(document_path, 'rb') as in_file:
+        parser = PDFParser(in_file)
+        doc = PDFDocument(parser)
+        rsrcmgr = PDFResourceManager()
+        device = TextConverter(rsrcmgr, output_string, laparams=LAParams())
+        interpreter = PDFPageInterpreter(rsrcmgr, device)
+        for page in PDFPage.create_pages(doc):
+            interpreter.process_page(page)
+
+    return output_string.getvalue()
 
 
 def get_document(document_url, filename, year):
@@ -21,6 +45,10 @@ def get_document(document_url, filename, year):
             fd.write(chunk)
 
     document_text = textract.process(f'docs/{year}/{filename}')
+
+    if filename.endswith('.pdf'):
+        return get_pdf_text(f'docs/{year}/{filename}')
+
     return document_text.decode(chardet.detect(document_text)['encoding'])
 
 
