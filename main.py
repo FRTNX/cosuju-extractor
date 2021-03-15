@@ -18,37 +18,44 @@ from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 
 
-DELAY_PER_REQUEST = 1 # seconds
+DELAY_PER_REQUEST = 0 # seconds
 
 
 # mitigates sentence segmentation
 def get_pdf_text(document_path):
     output_string = StringIO()
+
     with open(document_path, 'rb') as in_file:
-        parser = PDFParser(in_file)
-        doc = PDFDocument(parser)
-        rsrcmgr = PDFResourceManager()
-        device = TextConverter(rsrcmgr, output_string, laparams=LAParams())
-        interpreter = PDFPageInterpreter(rsrcmgr, device)
-        for page in PDFPage.create_pages(doc):
+        pdf_parser = PDFParser(in_file)
+        pdf_docunent = PDFDocument(pdf_parser)
+        resource_mgr = PDFResourceManager()
+        device = TextConverter(resource_mgr, output_string, laparams=LAParams())
+        interpreter = PDFPageInterpreter(resource_mgr, device)
+
+        for page in PDFPage.create_pages(pdf_docunent):
             interpreter.process_page(page)
 
     return output_string.getvalue()
 
 
 def get_document(document_url, filename, year):
-    req = requests.get(document_url, stream=True)
-    chunk_size = 2000
+    file_path = f'docs/{year}/{filename}'
 
-    with open(f'docs/{year}/{filename}', 'wb') as fd:
-        for chunk in req.iter_content(chunk_size):
-            fd.write(chunk)
+    if not os.path.exists(file_path):
+        req = requests.get(document_url, stream=True)
+        chunk_size = 2000
 
-    document_text = textract.process(f'docs/{year}/{filename}')
+        with open(file_path, 'wb') as pdf_file:
+            for chunk in req.iter_content(chunk_size):
+                pdf_file.write(chunk)
+    else:
+        print(f'Document already exists: {file_path}')
+
 
     if filename.endswith('.pdf'):
-        return get_pdf_text(f'docs/{year}/{filename}')
+        return get_pdf_text(file_path)
 
+    document_text = textract.process(file_path)
     return document_text.decode(chardet.detect(document_text)['encoding'])
 
 
@@ -57,20 +64,23 @@ def get_decision_documents(base_url, soup, year):
 
     links = [link.get('href') for link in soup.find_all('a')]
 
-    summary_endpoint = [link for link in links if link.endswith('media.pdf')]
-    judgement_endpoint = [link for link in links if link.endswith('.pdf') and 'media' not in link]
+    # remove error throwing None values
+    filtered_links = [link for link in links if link != None]
+
+    summary_endpoint = [link for link in filtered_links if link.endswith('media.pdf')]
+    judgement_endpoint = [link for link in filtered_links if link.endswith('.pdf') and 'media' not in link]
 
     if len(summary_endpoint) == 0:
-        summary_endpoint = [link for link in links if link.endswith('media.rtf')]
+        summary_endpoint = [link for link in filtered_links if link.endswith('media.rtf')]
 
     if len(judgement_endpoint) == 0:
-        judgement_endpoint = [link for link in links if link.endswith('.rtf') and 'media' not in link]
+        judgement_endpoint = [link for link in filtered_links if link.endswith('.rtf') and 'media' not in link]
 
     summary_file_url = base_url + summary_endpoint[0][20:] if len(summary_endpoint) > 0 else ''
     judgement_file_url = base_url + judgement_endpoint[0][20:] if len(judgement_endpoint) > 0 else ''
 
     if (summary_file_url):
-        summary_filename = summary_file_url[41:]
+        summary_filename = f'summary-for-case-{summary_file_url[41:]}'.replace('media.pdf', '.pdf')
         summary_document = {
             'filename': summary_filename,
             'file_url': summary_file_url,
@@ -78,7 +88,7 @@ def get_decision_documents(base_url, soup, year):
         }
 
     if (judgement_file_url):
-        judgement_filename = judgement_file_url[41:]
+        judgement_filename = f'judgement-for-case-{judgement_file_url[41:]}'
         judgement_document = {
             'filename': judgement_filename,
             'file_url': judgement_file_url,
@@ -90,7 +100,8 @@ def get_decision_documents(base_url, soup, year):
 
 def get_ml_data():
     data = {}
-    for year in [x for x in range(1995, 1996)]: # adjust as required
+    for year in [x for x in range(1995, 2023)]: # adjust as required
+        print(f'Beginning extraction for {year}')
         if not os.path.exists(f'docs/{year}'):
             os.mkdir(f'docs/{year}') # expected later
 
@@ -106,21 +117,25 @@ def get_ml_data():
         time.sleep(DELAY_PER_REQUEST)
 
         for decision_url in court_decision_urls:
-            req = requests.get(decision_url)
-            decision_soup = BeautifulSoup(req.text, 'html.parser')
-            summary_document, judgement_document = get_decision_documents(base_url, decision_soup, year)
+            try:
+                print(f'Extracting documents for {decision_url}')
+                req = requests.get(decision_url)
+                decision_soup = BeautifulSoup(req.text, 'html.parser')
+                summary_document, judgement_document = get_decision_documents(base_url, decision_soup, year)
 
-            data[str(year)].append({
-                'title': decision_soup.title.text,
-                'url': decision_url,
-                'summary_document': summary_document,
-                'judgement_document': judgement_document
-            })
+                data[str(year)].append({
+                    'title': decision_soup.title.text,
+                    'url': decision_url,
+                    'summary_document': summary_document,
+                    'judgement_document': judgement_document
+                })
 
-            print(data)
+                print(f'Extracted documents for {decision_url}')
+                time.sleep(DELAY_PER_REQUEST)
 
-            time.sleep(DELAY_PER_REQUEST)
-            break # we just need sample data for now
+            except Exception as e:
+                print(e)
+                pass
 
     with open('data.json', 'w') as f:
        f.write(json.dumps(data))
