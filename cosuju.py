@@ -1,20 +1,6 @@
 # coding=utf-8
-# Copyright 2020 The TensorFlow Datasets Authors and the HuggingFace Datasets Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the 'License');
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-# Lint as: python3
-"""COSUJU: The Stanford Question Answering Dataset."""
+"""COSUJU: The Court Summaries and Judgements Dataset."""
 
 from __future__ import absolute_import, division, print_function
 
@@ -53,11 +39,11 @@ class CosujuConfig(datasets.BuilderConfig):
         Args:
           **kwargs: keyword arguments forwarded to super.
         """
-        super(CourtSufuConfig, self).__init__(**kwargs)
+        super(CosujuConfig, self).__init__(**kwargs)
 
 
 class Cosuju(datasets.GeneratorBasedBuilder):
-    """COSUJU: The Court Summaries and Judgements Dataset. Version 1.1."""
+    """COSUJU: The Court Summaries and Judgements Dataset. Version 1.0.0"""
 
     BUILDER_CONFIGS = [
         CosujuConfig(
@@ -76,11 +62,11 @@ class Cosuju(datasets.GeneratorBasedBuilder):
                     'title': datasets.Value('string'),
                     'url': datasets.Value('string'),
                     'year': datasets.Value('string'),
-                    'update_time': datasets.Value('string'),
+                    'update_date': datasets.Value('string'),
                     'summary_document': datasets.features.Sequence(
                         {
                             'filename': datasets.Value('string'),
-                            'file_url': datasets.Value('sring'),
+                            'file_url': datasets.Value('string'),
                             'file_content': datasets.Value('string')
                         }
                     ),
@@ -111,21 +97,19 @@ class Cosuju(datasets.GeneratorBasedBuilder):
         with open(filepath, encoding="utf-8") as f:
             for id_, row in enumerate(f):
                 data = json.loads(row)
-                    yield id_, {
+                result = {
                     'id': data['id'],
-                    'title': data['title'],,
+                    'title': data['title'],
                     'url': data['url'],
                     'year': data['year'],
-                    'update_time': data['update_time'],
-                    'summary_document': {
-                        'filename': data['summary_document']['filename'],
-                        'file_url': data['summary_document']['file'],
-                        'file_content': data['summary_document']['file_content']
-                    },
-                    'judgement_document': {
-                       'filename': data['judgement_document']['filename'],
-                        'file_url': data['judgement_document']['file'],
-                        'file_content': data['judgement_document']['file_content']
-                    }
+                    'update_date': data['update_date']
                 }
 
+                # as some court decisions have no summaries, may filter these out in future
+                for prop in ['summary_document', 'judgement_document']:
+                    if data[prop]:
+                        result[prop] = data[prop]
+                    else:
+                        result[prop] = { 'filename': '', 'file_url': '', 'file_content': '' }
+                    
+                yield id_, result
