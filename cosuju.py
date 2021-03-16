@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""COSUFU: The Stanford Question Answering Dataset."""
+"""COSUJU: The Stanford Question Answering Dataset."""
 
 from __future__ import absolute_import, division, print_function
 
@@ -28,16 +28,15 @@ logger = datasets.logging.get_logger(__name__)
 
 _CITATION = """\
 @InProceedings{huggingface:dataset,
-title = {CoSuFu 500+ Court Judegements and Summaries for Machine Text Summarization},
-authors={Busani Ndlovu, Luke Jordan
-},
-year={2021}
+title   = {CoSuJu 500+ Court Judegements and Summaries for Machine Text Summarization},
+authors = {Busani Ndlovu, Luke Jordan},
+year    = {2021}
 }
 """
 
+# TODO: Complete description
 _DESCRIPTION = """\
-Court Summaries and Judgements (CoSuJu) is a reading comprehension \
-dataset
+Court Summaries and Judgements (CoSuJu)
 """
 
 _URL = 'https://github.com/FRTNX/ml-data-scraper/dataset'
@@ -46,22 +45,22 @@ _URLS = {
 }
 
 
-class CosufuConfig(datasets.BuilderConfig):
-    """BuilderConfig for COSUFU."""
+class CosujuConfig(datasets.BuilderConfig):
+    """BuilderConfig for COSUJU."""
 
     def __init__(self, **kwargs):
-        """BuilderConfig for COSUFU.
+        """BuilderConfig for COSUJU.
         Args:
           **kwargs: keyword arguments forwarded to super.
         """
-        super(CosufuConfig, self).__init__(**kwargs)
+        super(CourtSufuConfig, self).__init__(**kwargs)
 
 
-class Cosufu(datasets.GeneratorBasedBuilder):
-    """COSUFU: The Court Summaries and Judgements Dataset. Version 1.1."""
+class Cosuju(datasets.GeneratorBasedBuilder):
+    """COSUJU: The Court Summaries and Judgements Dataset. Version 1.1."""
 
     BUILDER_CONFIGS = [
-        CosufuConfig(
+        CosujuConfig(
             name='plain_text',
             version=datasets.Version('1.0.0', ''),
             description='Plain text',
@@ -88,16 +87,14 @@ class Cosufu(datasets.GeneratorBasedBuilder):
                     'judgement_document': datasets.features.Sequence(
                         {
                             'filename': datasets.Value('string'),
-                            'file_url': datasets.Value('sring'),
+                            'file_url': datasets.Value('string'),
                             'file_content': datasets.Value('string')
                         }
                     ),
                 }
             ),
-            # No default supervised_keys (as we have to pass both question
-            # and context as input).
             supervised_keys=None,
-            homepage='https://github.com/FRTNX/',
+            homepage='https://github.com/FRTNX/ml-data-scraper',
             citation=_CITATION,
         )
 
@@ -111,28 +108,24 @@ class Cosufu(datasets.GeneratorBasedBuilder):
     def _generate_examples(self, filepath):
         """This function returns the examples in the raw (text) form."""
         logger.info('generating examples from = %s', filepath)
-        with open(filepath, encoding='utf-8') as f:
-            cosufu = json.load(f)
-            for article in cosufu['data']:
-                title = article.get('title', '').strip()
-                for paragraph in article['paragraphs']:
-                    context = paragraph['context'].strip()
-                    for qa in paragraph['qas']:
-                        question = qa['question'].strip()
-                        id_ = qa['id']
+        with open(filepath, encoding="utf-8") as f:
+            for id_, row in enumerate(f):
+                data = json.loads(row)
+                    yield id_, {
+                    'id': data['id'],
+                    'title': data['title'],,
+                    'url': data['url'],
+                    'year': data['year'],
+                    'update_time': data['update_time'],
+                    'summary_document': {
+                        'filename': data['summary_document']['filename'],
+                        'file_url': data['summary_document']['file'],
+                        'file_content': data['summary_document']['file_content']
+                    },
+                    'judgement_document': {
+                       'filename': data['judgement_document']['filename'],
+                        'file_url': data['judgement_document']['file'],
+                        'file_content': data['judgement_document']['file_content']
+                    }
+                }
 
-                        answer_starts = [answer['answer_start'] for answer in qa['answers']]
-                        answers = [answer['text'].strip() for answer in qa['answers']]
-
-                        # Features currently used are 'context', 'question', and 'answers'.
-                        # Others are extracted here for the ease of future expansions.
-                        yield id_, {
-                            'title': title,
-                            'context': context,
-                            'question': question,
-                            'id': id_,
-                            'answers': {
-                                'answer_start': answer_starts,
-                                'text': answers,
-                            },
-                        }
