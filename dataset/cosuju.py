@@ -25,33 +25,27 @@ _DESCRIPTION = """\
 Court Summaries and Judgements (CoSuJu)
 """
 
-_URL = 'https://github.com/FRTNX/ml-data-scraper/dataset'
+# Redundant but may useful in future.
+_URL = 'https://github.com/FRTNX/ml-data-scraper/blob/main/dataset/'
 _URLS = {
     'train': _URL + 'mini-train-v1.0.json'
 }
 
 
-class CosujuConfig(datasets.BuilderConfig):
-    """BuilderConfig for COSUJU."""
-
-    def __init__(self, **kwargs):
-        """BuilderConfig for COSUJU.
-        Args:
-          **kwargs: keyword arguments forwarded to super.
-        """
-        super(CosujuConfig, self).__init__(**kwargs)
-
-
 class Cosuju(datasets.GeneratorBasedBuilder):
     """COSUJU: The Court Summaries and Judgements Dataset. Version 1.0.0"""
 
+    VERSION = datasets.Version("1.0.0")
+
+    # Allows configuration to be chosen at run time
+    # data = datasets.load_dataset('my_dataset', 'include_no_summary')
+    # data = datasets.load_dataset('my_dataset', 'exclude_no_summary')
     BUILDER_CONFIGS = [
-        CosujuConfig(
-            name='plain_text',
-            version=datasets.Version('1.0.0', ''),
-            description='Plain text',
-        ),
+        datasets.BuilderConfig(name="include_no_summary", version=VERSION, description="Includes rows with no summary documents"),
+        datasets.BuilderConfig(name="exclude_no_summary", version=VERSION, description="Excludes rows with no summary documents"),
     ]
+
+    DEFAULT_CONFIG_NAME = 'exclude_no_summary'
 
     def _info(self):
         return datasets.DatasetInfo(
@@ -63,24 +57,20 @@ class Cosuju(datasets.GeneratorBasedBuilder):
                     'url': datasets.Value('string'),
                     'year': datasets.Value('string'),
                     'update_date': datasets.Value('string'),
-                    'summary_document': datasets.features.Sequence(
-                        {
+                    'summary_document': {
                             'filename': datasets.Value('string'),
                             'file_url': datasets.Value('string'),
                             'file_content': datasets.Value('string')
-                        }
-                    ),
-                    'judgement_document': datasets.features.Sequence(
-                        {
-                            'filename': datasets.Value('string'),
-                            'file_url': datasets.Value('string'),
-                            'file_content': datasets.Value('string')
-                        }
-                    ),
-                }
+                        },
+                    'judgement_document': {
+                        'filename': datasets.Value('string'),
+                        'file_url': datasets.Value('string'),
+                        'file_content': datasets.Value('string')
+                    },
+            }
             ),
             supervised_keys=None,
-            homepage='https://github.com/FRTNX/ml-data-scraper',
+            homepage='https://huggingface.co/datasets/FRTNX/cosuju',
             citation=_CITATION,
         )
 
@@ -94,21 +84,30 @@ class Cosuju(datasets.GeneratorBasedBuilder):
     def _generate_examples(self, filepath):
         """This function returns the examples in the raw (text) form."""
         logger.info('generating examples from = %s', filepath)
-        with open(filepath, encoding="utf-8") as f:
-            for id_, row in enumerate(f):
-                data = json.loads(row)
+        with open('train-v1.0.json', 'r') as f:
+            cosuju = json.loads(f.read())
+            for row in cosuju['data']:
+                if self.config.name == 'exclude_no_summary':
+                    if not row['summary_document']:
+                        continue
+
+                    if type(row['summary_document']) == dict and \
+                        row['summary_document']['file_content'] == '':
+                        continue
+
+                id_ = row['id']
                 result = {
-                    'id': data['id'],
-                    'title': data['title'],
-                    'url': data['url'],
-                    'year': data['year'],
-                    'update_date': data['update_date']
+                    'id': row['id'],
+                    'title': row['title'],
+                    'url': row['url'],
+                    'year': row['year'],
+                    'update_date': row['update_date']
                 }
 
-                # as some court decisions have no summaries, may filter these out in future
+                # This is to keep things feature compliant
                 for prop in ['summary_document', 'judgement_document']:
-                    if data[prop]:
-                        result[prop] = data[prop]
+                    if row[prop]:
+                        result[prop] = row[prop]
                     else:
                         result[prop] = { 'filename': '', 'file_url': '', 'file_content': '' }
                     
