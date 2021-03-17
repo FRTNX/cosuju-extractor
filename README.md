@@ -1,4 +1,6 @@
-# ml-data-scraper
+# Cosuju Data Extractor
+
+The Court Summaries and Judgements (CoSuJu) Dataset's extractor. 
 
 ![](image.gif)
 
@@ -8,7 +10,6 @@ To run the extractor:
 
 
  ## datasets Integrations
- ---
 
 To use the data with the ```datasets``` library you may either load the dataset from its repository on huggingface.co:
 
