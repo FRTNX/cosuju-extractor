@@ -1,6 +1,11 @@
 import os
+import sys
+
 import json
+import uuid
+
 import time
+import datetime
 
 import chardet
 import requests
@@ -18,7 +23,7 @@ from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 
 
-DELAY_PER_REQUEST = 0 # seconds
+DELAY_PER_REQUEST = 1 # seconds
 
 
 # mitigates sentence segmentation
@@ -98,14 +103,16 @@ def get_decision_documents(base_url, soup, year):
     return [summary_document, judgement_document]
 
 
-def get_ml_data():
-    data = {}
-    for year in [x for x in range(1995, 2023)]: # adjust as required
+def get_ml_data(process_data=True):
+    extracted_data = {
+        'version': '1.0.0',
+        'data': []
+    }
+
+    for year in [x for x in range(1995, 1996)]: # adjust as required
         print(f'Beginning extraction for {year}')
         if not os.path.exists(f'docs/{year}'):
             os.mkdir(f'docs/{year}') # expected later
-
-        data[str(year)] = []
 
         base_url = f'http://www.saflii.org/za/cases/ZACC/{year}/'
         req = requests.get(base_url)
@@ -123,25 +130,36 @@ def get_ml_data():
                 decision_soup = BeautifulSoup(req.text, 'html.parser')
                 summary_document, judgement_document = get_decision_documents(base_url, decision_soup, year)
 
-                data[str(year)].append({
-                    'title': decision_soup.title.text,
-                    'url': decision_url,
-                    'summary_document': summary_document,
-                    'judgement_document': judgement_document
-                })
-
                 print(f'Extracted documents for {decision_url}')
                 time.sleep(DELAY_PER_REQUEST)
+
+                if not process_data:
+                    print('No document processing necessary. Moving on to next document')
+                    continue
+
+                extracted_data['data'].append({
+                    'id': str(uuid.uuid4()),
+                    'title': decision_soup.title.text,
+                    'year': year,
+                    'url': decision_url,
+                    'summary_document': summary_document,
+                    'judgement_document': judgement_document,
+                    'update_date': str(datetime.datetime.now())
+                })
 
             except Exception as e:
                 print(e)
                 pass
 
-    with open('data.json', 'w') as f:
-       f.write(json.dumps(data))
+    if process_data:
+        with open('data.json', 'w') as f:
+            f.write(json.dumps(extracted_data))
 
-    return data
+    return extracted_data
 
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == '--no-json':
+        get_ml_data(False)
+    
     get_ml_data()
