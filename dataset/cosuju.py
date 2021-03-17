@@ -32,6 +32,17 @@ _URLS = {
 }
 
 
+class CosujuConfig(datasets.BuilderConfig):
+    """BuilderConfig for COSUJU."""
+
+    def __init__(self, **kwargs):
+        """BuilderConfig for COSUJU.
+        Args:
+          **kwargs: keyword arguments forwarded to super.
+        """
+        super(CosujuConfig, self).__init__(**kwargs)
+
+
 class Cosuju(datasets.GeneratorBasedBuilder):
     """COSUJU: The Court Summaries and Judgements Dataset. Version 1.0.0"""
 
