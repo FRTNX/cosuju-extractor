@@ -109,7 +109,7 @@ def get_ml_data(process_data=True):
         'data': []
     }
 
-    for year in [x for x in range(1995, 1996)]: # adjust as required
+    for year in [x for x in range(1995, 2022)]: # adjust as required
         print(f'Beginning extraction for {year}')
         if not os.path.exists(f'docs/{year}'):
             os.mkdir(f'docs/{year}') # expected later
