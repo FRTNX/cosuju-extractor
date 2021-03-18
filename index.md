@@ -1,37 +1,28 @@
-## Welcome to GitHub Pages
+# Cosuju Data Extractor
 
-You can use the [editor on GitHub](https://github.com/FRTNX/cosuju-extractor/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+The Court Summaries and Judgements (CoSuJu) Dataset's extractor. 
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+![](image.gif)
 
-### Markdown
+To run the extractor:
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+ $``` python main.py```
 
-```markdown
-Syntax highlighted code block
 
-# Header 1
-## Header 2
-### Header 3
+ ## datasets Integrations
 
-- Bulleted
-- List
+To use the data with the ```datasets``` library you may either load the dataset from its repository on huggingface.co:
 
-1. Numbered
-2. List
+ ```
+ from datasets import load_dataset
 
-**Bold** and _Italic_ and `Code` text
+ dataset = load_dataset('FRTNX/cosuju', split='train')
+ ```
 
-[Link](url) and ![Image](src)
+ or read the files locally after cloning this repository:
+
 ```
+from datasets import load_dataset
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/FRTNX/cosuju-extractor/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+dataset = load_dataset('dataset/cosuju.py', data_files='dataset/train-v1.0.json', split='train')
+```
